@@ -2690,6 +2690,90 @@ PyTypeObject PyZip_Type = {
 };
 
 
+static PyObject *
+builtin_anext(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
+{
+    PyObject *aiter = NULL;
+    PyObject *awaitable = NULL;
+
+    if (!_PyArg_UnpackStack(args, nargs, "anext", 1, 1, &aiter)) {
+        return NULL;
+    }
+
+    PyTypeObject *type = Py_TYPE(aiter);
+
+    if (type->tp_as_async == NULL ||
+            type->tp_as_async->am_anext) {
+        PyErr_Format(PyExc_TypeError,
+        "'%.200s' object is not an async generator", 
+        type->tp_name);
+        return NULL;    
+    }
+    
+    PyObject *next_iter = (*type->tp_as_async->am_anext)(aiter);
+    if (next_iter != NULL) {
+        awaitable = _PyCoro_GetAwaitableIter(next_iter);
+        PyObject *error = PyErr_Occurred();
+        if (error != NULL) {
+            return NULL;
+        }
+    }
+
+    Py_XDECREF(next_iter);
+    return awaitable;
+}
+
+PyDoc_STRVAR(anext_doc,
+"anext(async_generator)\n\
+\n\
+Return ");
+
+static PyObject * 
+builtin_aiter(PyObject *self, PyObject *const *args, Py_ssize_t nargs) 
+{
+    PyObject *obj = NULL;
+    PyObject *aiter = NULL;
+
+    if (!_PyArg_UnpackStack(args, nargs, "aiter", 1, 1, &obj)) {
+        return NULL;
+    }
+    PyTypeObject *type = Py_TYPE(obj);
+
+    if (type->tp_as_async == NULL || 
+            type->tp_as_async->am_aiter) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "'aiter' requires an object with "
+            "__aiter__ method, got %.100s",
+            type->tp_name);
+        return NULL;
+    }
+    PyObject *iter = (*type->tp_as_async->am_aiter)(obj);
+    if (iter == NULL) {
+        return NULL;
+    }
+
+    PyTypeObject *type_iter = Py_TYPE(iter);
+    if (type_iter->tp_as_async == NULL || 
+        type_iter->tp_as_async->am_anext == NULL) {
+        PyErr_Format(
+            PyExc_TypeError,
+            "'aiter' received an object from __aiter__ "
+            "that does not implement __anext__: %.100s",
+            Py_TYPE(iter)->tp_name);
+        Py_DECREF(iter);
+        return NULL;
+    }
+    aiter = (*type_iter->tp_as_async->am_anext)(obj);
+    Py_XINCREF(aiter);
+    return aiter;
+}
+
+PyDoc_STRVAR(aiter_doc,
+"aiter(object)\n\
+\n\
+Return ");
+
 static PyMethodDef builtin_methods[] = {
     {"__build_class__", (PyCFunction)builtin___build_class__,
      METH_FASTCALL | METH_KEYWORDS, build_class_doc},
@@ -2724,6 +2808,8 @@ static PyMethodDef builtin_methods[] = {
     {"max",             (PyCFunction)builtin_max,        METH_VARARGS | METH_KEYWORDS, max_doc},
     {"min",             (PyCFunction)builtin_min,        METH_VARARGS | METH_KEYWORDS, min_doc},
     {"next",            (PyCFunction)builtin_next,       METH_FASTCALL, next_doc},
+    {"aiter",           (PyCFunction)builtin_aiter,      METH_FASTCALL, anext_doc},
+    {"anext",           (PyCFunction)builtin_anext,      METH_FASTCALL, aiter_doc},
     BUILTIN_OCT_METHODDEF
     BUILTIN_ORD_METHODDEF
     BUILTIN_POW_METHODDEF
