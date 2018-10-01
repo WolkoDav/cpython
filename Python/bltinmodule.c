@@ -2709,10 +2709,11 @@ builtin_anext(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     PyTypeObject *type = Py_TYPE(aiter);
 
     if (type->tp_as_async == NULL ||
-            type->tp_as_async->am_anext) {
+        !type->tp_as_async->am_anext) 
+    {
         PyErr_Format(PyExc_TypeError,
-        "'%.200s' object is not an async generator", 
-        type->tp_name);
+                     "'%.200s' object is not an async generator",
+                     type->tp_name);
         return NULL;    
     }
     
@@ -2722,7 +2723,6 @@ builtin_anext(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
         PyObject *error = PyErr_Occurred();
         if (error != NULL) {
             return NULL;
-        }
     }
 
     Py_XDECREF(next_iter);
@@ -2732,7 +2732,7 @@ builtin_anext(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
 PyDoc_STRVAR(anext_doc,
 "anext(async_generator)\n\
 \n\
-Return ");
+Return the item from async iterator.");
 
 static PyObject * 
 builtin_aiter(PyObject *self, PyObject *const *args, Py_ssize_t nargs) 
@@ -2746,12 +2746,12 @@ builtin_aiter(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
     PyTypeObject *type = Py_TYPE(obj);
 
     if (type->tp_as_async == NULL || 
-            type->tp_as_async->am_aiter) {
-        PyErr_Format(
-            PyExc_TypeError,
-            "'aiter' requires an object with "
-            "__aiter__ method, got %.100s",
-            type->tp_name);
+        !type->tp_as_async->am_aiter) 
+    {
+        PyErr_Format(PyExc_TypeError,
+                     "'aiter' requires an object with "
+                     "__aiter__ method, got %.100s",
+                     type->tp_name);
         return NULL;
     }
     PyObject *iter = (*type->tp_as_async->am_aiter)(obj);
@@ -2761,12 +2761,12 @@ builtin_aiter(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
 
     PyTypeObject *type_iter = Py_TYPE(iter);
     if (type_iter->tp_as_async == NULL || 
-        type_iter->tp_as_async->am_anext == NULL) {
-        PyErr_Format(
-            PyExc_TypeError,
-            "'aiter' received an object from __aiter__ "
-            "that does not implement __anext__: %.100s",
-            Py_TYPE(iter)->tp_name);
+        type_iter->tp_as_async->am_anext == NULL) 
+    {
+        PyErr_Format(PyExc_TypeError,
+                     "'aiter' received an object from __aiter__ "
+                     "that does not implement __anext__: %.100s",
+                     Py_TYPE(iter)->tp_name);
         Py_DECREF(iter);
         return NULL;
     }
@@ -2776,9 +2776,9 @@ builtin_aiter(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
 }
 
 PyDoc_STRVAR(aiter_doc,
-"aiter(object)\n\
-\n\
-Return ");
+"aiter(async_iterable) -> async_iterator\n\
+aiter(async_callable) -> async_iterator\n\
+Return async_iterator for async iterable and async callable object");
 
 static PyMethodDef builtin_methods[] = {
     {"__build_class__", (PyCFunction)builtin___build_class__,
