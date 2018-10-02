@@ -2723,6 +2723,7 @@ builtin_anext(PyObject *self, PyObject *const *args, Py_ssize_t nargs)
         PyObject *error = PyErr_Occurred();
         if (error != NULL) {
             return NULL;
+        }
     }
 
     Py_XDECREF(next_iter);

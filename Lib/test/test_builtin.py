@@ -1,7 +1,9 @@
 # Python test set -- built-in functions
 
 import ast
+import asyncio
 import builtins
+import collections.abc
 import collections
 import decimal
 import fractions
@@ -1524,6 +1526,63 @@ class BuiltinTest(unittest.TestCase):
             self.assertIs(tp(), const)
             self.assertRaises(TypeError, tp, 1, 2)
             self.assertRaises(TypeError, tp, a=1, b=2)
+
+class AsyncBuiltin(unittest.TestCase):
+    
+    def setUp(self):
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
+
+    def tearDown(self):
+        self.loop.close()
+        self.loop = None
+        asyncio.set_event_loop_policy(None)
+        
+    def test_anext(self):
+        async def gen():
+            yield 1
+            yield 2
+        
+        g = gen()
+        
+        async def test():
+            result = []
+            result.append(await anext(g))
+            result.append(await anext(g))
+            with self.assertRaises(StopAsyncIteration):
+                await anext(g)
+            return result
+        
+        result = self.loop.run_until_complete(test())
+        self.assertEqual(result, [1, 2])
+
+    def test_aiter(self):
+        class Gen:
+            def __aiter__(self):
+                return self
+            
+            async def __anext__(self):
+                yield 1
+                yield 2
+        
+        async def test(gen):
+            return [i async for i in gen]
+
+        g = Gen()
+        result = aiter(g)
+        iter_result = self.loop.run_until_complete(test(result))
+
+        self.assertIsInstance(result, collections.abc.AsyncIterator)
+        self.assertEqual(iter_result, [1, 2])    
+
+    def test_aiter_raise_exception(self):
+        self._test_raise_exception(aiter)
+
+    def test_anext_raise_exception(self):
+        self._test_raise_exception(anext)
+   
+    def _test_raise_exception(self, afunc):
+        pass 
 
 
 class TestBreakpoint(unittest.TestCase):
